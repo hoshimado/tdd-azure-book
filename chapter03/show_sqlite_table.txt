@@ -1,0 +1,8 @@
+sqlite3.exe mydb.sqlite3
+
+sqlite> 
+
+SELECT * FROM activitylogs;
+1|2017/10/22|111|nyan1nyan2nyan3nayn4nayn5nyan6ny;
+.exit
+

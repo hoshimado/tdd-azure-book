@@ -1,0 +1,18 @@
+sqlite3.exe mydb.sqlite3
+
+sqlite> 
+
+CREATE TABLE activitylogs(
+[id] [integer] PRIMARY KEY AUTOINCREMENT NOT NULL,
+[created_at] [text] NOT NULL,
+[type] [int] NULL,
+[owners_hash] [text] NULL
+);
+INSERT INTO activitylogs(
+[created_at], [type], [owners_hash]
+) VALUES(
+'2017/10/22', 111,
+'nyan1nyan2nyan3nayn4nayn5nyan6ny'
+);
+.exit
+
