@@ -11,13 +11,13 @@
 
 [section2-1to2-2](./section2-1to2-2)
 
-## 2.2節　ユーザー登録機能を実装してテストをpassさせる
+## 2.3節　ユーザー登録機能を実装してテストをpassさせる
 
 [section2-3-1before](./section2-3-1before)
 
 [section2-3-2after](./section2-3-2after)
 
-## 2.2節　ユーザー削除機能を実装してテストをpassさせる
+## 2.4節　ユーザー削除機能を実装してテストをpassさせる
 
 [section2-4](./section2-4)
 
