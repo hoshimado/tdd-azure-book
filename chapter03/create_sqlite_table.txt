@@ -1,4 +1,4 @@
-sqlite3.exe mydb.sqlite3
+﻿sqlite3.exe mydb.sqlite3
 
 sqlite> 
 
