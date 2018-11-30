@@ -13,3 +13,12 @@
 図3.2: テストフレームワークからSQLiteを実際にRead
 
 ![図3.2: テストフレームワークからSQLiteを実際にRead](../images/TestActual_SQLiteNodejs_Show1.jpg)
+
+## 補足
+
+* 実際に、ログのReadを行うテストコード（紙面上で解説）
+  * sql_lite_db_actual_test1.js
+* 実際に、ログのWriteを行うテストコード（As Is）
+  * sql_lite_db_actual_test2.js
+* 実際に、ユーザーのWriteを行うが、対象のテーブルが未作成なので失敗するテストコード（As Is）
+  * sql_lite_db_actual_test3.js

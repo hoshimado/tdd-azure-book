@@ -16,6 +16,8 @@ https://www.sqlite.org/download.html
 
 ※サンプルコードには、実行に必要なテーブルと読み取り用データを作成済みの「mydb.sqlite3」を既に入れてあります。sqlite3コマンドは中身の確認や再作成する場合などに利用ください。
 
+※テスト動作時に、実際のSQLiteデータベースファイル「mydb.sqlite3」を必要とするのは「節3.1」のコードのみです。
+
 本章のサンプルコードで利用するSQLiteのテーブルの作成コマンドは次のテキストファイルからコピー＆ペーストできます。「db」フォルダ内に「sqlite3.exe」が置かれた状態で実行してください。
 
 [create_sqlite_table.txt](./create_sqlite_table.txt)
@@ -25,11 +27,6 @@ https://www.sqlite.org/download.html
 ## 3.1節　テストフレームワークから実際の外部I/Oを試行する
 
 [section3-1](./section3-1)
-
-テストの実行コマンドは以下です。
-
-`npm test test\sql_lite_db_actual_test1.js `
-
 
 ## 3.2節　外部I/Oをスタブ化する
 

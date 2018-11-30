@@ -206,11 +206,6 @@ describe( "sql_lite_db_test.js", function(){
             
         });
     });
-    //describe( "::addActivityLog2Database()",function(){
-    //    it("正常系");
-    //});
-    //clock = sinon.useFakeTimers(); // これで時間が止まる。「1970-01-01 09:00:00.000」に固定される。
-    // clock.restore(); // 時間停止解除。
 });
 
 
