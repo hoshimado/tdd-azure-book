@@ -74,11 +74,12 @@ describe( "sql_lite_db_crud.js", function(){
                 expect( dbs[ sqlConfig.database ] ).to.equal( stubInstance, "空だったdbsに、データベースインスタンスが追加されている事" );
             });
         });
+        it("正常系：2回目のOpenはカウントしておく？");
         it("異常系");
     });
     describe( "::closeConnection()",function(){
         var closeConnection = sql_parts.closeConnection;
-        it("正常系。期間指定なし。",function(){
+        it("正常系",function(){
             var period = null; //無しの場合
             var deviceKey = "にゃーん。";
             var dbs = sql_parts.factoryImpl.db.getInstance();
@@ -90,12 +91,12 @@ describe( "sql_lite_db_crud.js", function(){
             stub_instance.callsArgWith(0, null);
             return shouldFulfilled(
                 sql_parts.closeConnection( sqlConfig.database )
-            ).then(function(result){
+            ).then(function(){
                 assert( stub_instance.calledOnce );
                 expect( dbs[ sqlConfig.database ] ).to.not.be.exist;
             });
-            
         });
+        it("正常系：実際のCloseは、Open回数を全部Closeしたら、、、にする？");
     });
 
 
@@ -125,13 +126,13 @@ describe( "sql_lite_db_crud.js", function(){
             sql_parts.factoryImpl._wrapStringValue.setStub( stub_wrapperStr );
 
             dbs[ sqlConfig.database ] = {
-                "all" : stub_sql_instance
+                "run" : stub_sql_instance
             };
             stub_sql_instance.callsArgWith(2, /* err= */null, /* rows= */null);
 
             return shouldFulfilled(
                 sql_parts.addNewUser( databaseName, deviceKey, maxEntrys, passwordStr )
-            ).then(function(){
+            ).then(function(result){
                 assert( stub_wrapperStr.withArgs( deviceKey ).calledOnce );
                 assert( stub_wrapperStr.withArgs( passwordStr ).calledOnce );
                 assert( stub_sql_instance.calledOnce );
@@ -139,9 +140,15 @@ describe( "sql_lite_db_crud.js", function(){
                 var called_args = stub_sql_instance.getCall(0).args;
                 expect( called_args[0] ).to.equal(
                     "INSERT INTO owners_permission([owners_hash], [max_entrys], [password])" 
-                    + " VALUES('" + deviceKey + "', " + maxEntrys + ", '" + passwordStr + "')"
-                );
-                expect( called_args[1].length ).to.equal( 0 );
+                    + " VALUES( ?, ?, ? )"
+                ); // http://www.sqlitetutorial.net/sqlite-nodejs/insert/
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey, 
+                    maxEntrys, 
+                    passwordStr
+                ]); // https://github.com/mapbox/node-sqlite3/wiki/API#databaseallsql-param--callback
+
+                expect(result).to.be.undefined;
             });
         });
     });
@@ -209,9 +216,9 @@ describe( "sql_lite_db_crud.js", function(){
             sql_parts.factoryImpl._wrapStringValue.setStub( stub_wrapperStr );
  
             dbs[ databaseName ] = {
-                "all" : stub_sql_instance
+                "run" : stub_sql_instance
             };
-            stub_sql_instance.callsArgWith(2, /* err= */null, /* rows= */null ); // 0,1,2番目にcallbackが渡されるので、その2番目を、引数「null, null」で呼び出す。
+            stub_sql_instance.callsArgWith(2, /* err= */null ); // 0,1,2番目にcallbackが渡されるので、その2番目を、引数「null」で呼び出す。
 
             return shouldFulfilled(
                 deleteExistUser( databaseName, deviceKey )
@@ -220,9 +227,14 @@ describe( "sql_lite_db_crud.js", function(){
                 var called_args = stub_sql_instance.getCall(0).args;
                 expect( called_args[0] ).to.equal(
                     "DELETE FROM owners_permission "
-                    + "WHERE [owners_hash]=\'" + deviceKey + "\'"
-                );
-                expect( called_args[1].length ).to.equal( 0 );
+                    + "WHERE [owners_hash] = ?"
+                ); // http://www.sqlitetutorial.net/sqlite-nodejs/delete/
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey
+                ]);
+                // https://github.com/mapbox/node-sqlite3/wiki/API#databaserunsql-param--callback
+                // 単一の引数として指定してもOKだし、配列として指定してもOKだし、オブジェクトとして指定してもOK、とのこと。
+                // 慣れるまでは「配列」で統一して使おうか。
             });
         });
     });
@@ -273,9 +285,11 @@ describe( "sql_lite_db_crud.js", function(){
                 expect( called_args[0] ).to.equal(
                     "SELECT owners_hash, password, max_entrys " 
                     + "FROM owners_permission "
-                    + "WHERE [owners_hash]=\'" + deviceKey + "\'"
+                    + "WHERE [owners_hash] = ?"
                 );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey
+                ]);
                 expect( result ).to.equal( expectedMaxCount );
                 
             });
@@ -311,9 +325,11 @@ describe( "sql_lite_db_crud.js", function(){
                 expect( called_args[0] ).to.equal(
                     "SELECT owners_hash, password, max_entrys " 
                     + "FROM owners_permission "
-                    + "WHERE [owners_hash]=\'" + deviceKey + "\'"
+                    + "WHERE [owners_hash] = ?"
                 );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey
+                ]);
                 expect( result ).to.have.property( "isDevicePermission" ).to.equal( false );
                 expect( result ).to.have.property( "isUserExist" ).to.equal( true );
             });
@@ -344,9 +360,11 @@ describe( "sql_lite_db_crud.js", function(){
                 expect( called_args[0] ).to.equal(
                     "SELECT owners_hash, password, max_entrys " 
                     + "FROM owners_permission "
-                    + "WHERE [owners_hash]=\'" + deviceKey + "\'"
+                    + "WHERE [owners_hash] = ?"
                 );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey
+                ]);
                 expect( result ).to.have.property( "isDevicePermission" ).to.equal( false );
                 expect( result ).to.have.property( "isUserExist" ).to.equal( false );
             });
@@ -390,9 +408,11 @@ describe( "sql_lite_db_crud.js", function(){
                 var called_args = stub_instance.getCall(0).args;
                 expect( called_args[0] ).to.equal(
                     "SELECT created_at, type FROM activitylogs " 
-                    + "WHERE [owners_hash]=\'" + deviceKey + "\'"
+                    + "WHERE [owners_hash] = ?"
                 );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey
+                ]);
                 expect( result ).to.deep.equal( expectedRows );
             });
         });
@@ -408,7 +428,7 @@ describe( "sql_lite_db_crud.js", function(){
             var clock = sinon.useFakeTimers(); // これで時間が止まる。「1970-01-01 09:00:00.000」に固定される。
             
             dbs[ sqlConfig.database ] = {
-                "all" : stub_instance
+                "run" : stub_instance
             };
             stub_instance.callsArgWith(2, /* err= */null, /* rows= */null);
             sql_parts.factoryImpl._wrapStringValue.setStub( stub_wrapperStr );
@@ -424,9 +444,13 @@ describe( "sql_lite_db_crud.js", function(){
                 var called_args = stub_instance.getCall(0).args;
                 expect( called_args[0] ).to.equal(
                     "INSERT INTO activitylogs(created_at, type, owners_hash ) " 
-                    + "VALUES('1970-01-01 09:00:00.000', " + typeOfAction + ", '" + deviceKey + "')"
+                    + "VALUES( ?, ?, ? )"
                 );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    "1970-01-01 09:00:00.000",
+                    typeOfAction,
+                    deviceKey
+                ]);
                 expect( result ).to.deep.equal({
                     "type_value" : typeOfAction,
                     "device_key" : deviceKey
@@ -455,18 +479,17 @@ describe( "sql_lite_db_crud.js", function(){
                 sql_parts.deleteActivityLogWhereDeviceKey( sqlConfig.database, deviceKey, period )
             ).then(function(){ // 戻り値（引数）は無し。
                 var EXPECTED_QUERY_STR = "DELETE FROM activitylogs";
-                EXPECTED_QUERY_STR += " WHERE [owners_hash]='";
-                EXPECTED_QUERY_STR += deviceKey;
-                EXPECTED_QUERY_STR += "' AND [created_at] <= '";
-                EXPECTED_QUERY_STR += period.end;
-                EXPECTED_QUERY_STR += "'";
+                EXPECTED_QUERY_STR += " WHERE [owners_hash] = ?";
+                EXPECTED_QUERY_STR += " AND [created_at] <= ?";
 
                 assert( stub_wrapperStr.withArgs( deviceKey ).calledOnce );
                 assert( stub_instance.calledOnce );
 
                 var called_args = stub_instance.getCall(0).args;
                 expect( called_args[0].replace(/ +/g,' ') ).to.equal( EXPECTED_QUERY_STR );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey, period.end
+                ]);
                 // DELETE FROM activitylogs WHERE [owners_hash]='nyan1nyan2nyan3nayn4nayn5nyan6ny' AND [created_at] > '2018/01/01' AND [created_at] <= '2018/01/04 23:59';
             });
         });
@@ -490,20 +513,20 @@ describe( "sql_lite_db_crud.js", function(){
                 sql_parts.deleteActivityLogWhereDeviceKey( sqlConfig.database, deviceKey, period )
             ).then(function(){ // 戻り値（引数）は無し。
                 var EXPECTED_QUERY_STR = "DELETE FROM activitylogs";
-                EXPECTED_QUERY_STR += " WHERE [owners_hash]='";
-                EXPECTED_QUERY_STR += deviceKey;
-                EXPECTED_QUERY_STR += "' AND [created_at] > '";
-                EXPECTED_QUERY_STR += period.start;
-                EXPECTED_QUERY_STR += "' AND [created_at] <= '";
-                EXPECTED_QUERY_STR += period.end;
-                EXPECTED_QUERY_STR += "'";
+                EXPECTED_QUERY_STR += " WHERE [owners_hash] = ?";
+                EXPECTED_QUERY_STR += " AND [created_at] > ?";
+                EXPECTED_QUERY_STR += " AND [created_at] <= ?";
 
                 assert( stub_wrapperStr.withArgs( deviceKey ).calledOnce );
                 assert( stub_instance.calledOnce );
 
                 var called_args = stub_instance.getCall(0).args;
                 expect( called_args[0].replace(/ +/g,' ') ).to.equal( EXPECTED_QUERY_STR );
-                expect( called_args[1].length ).to.equal( 0 );
+                expect( called_args[1] ).to.deep.equal([
+                    deviceKey,
+                    period.start,
+                    period.end
+                ]);
                 // DELETE FROM activitylogs WHERE [owners_hash]='nyan1nyan2nyan3nayn4nayn5nyan6ny' AND [created_at] > '2018/01/01' AND [created_at] <= '2018/01/04 23:59';
             });
         });

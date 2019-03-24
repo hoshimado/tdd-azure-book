@@ -15,6 +15,7 @@ exports.getInsertObjectFromPostData = _shaping.getInsertObjectFromPostData;
 var _crud = require("./sql_lite_db_crud.js");
 exports.createPromiseForSqlConnection = _crud.createPromiseForSqlConnection;
 exports.closeConnection = _crud.closeConnection;
+exports.queryDirectly = _crud.queryDirectly;
 
 exports.setupTable1st = _crud.setupTable1st;
 

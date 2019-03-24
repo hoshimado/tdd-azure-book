@@ -71,6 +71,37 @@ var closeConnection = function( databaseName ){
 exports.closeConnection = closeConnection;
 
 
+// ToDo: このソース内の all()の前後を、この queryDirectly() 利用にリファクタリングしよう。
+/**
+ * SQLite3 / mssql の差分を吸収することを目的に query() を wrapする。
+ * Bookshelf.jsを使うのが王道なんだろうけど、SQL練習を兼ねたかったので、Wrapperを自作する。
+ * 
+ * @param {String} databaseName createPermissionTable()で指定したデータベース名を文字列で指定する。
+ * @param {String} queryStr     SQLクエリーの文字列を指定。
+ * @param {Object} param        SQLのプレースホルダ―変数の配列（前提だが、MSSQLがわの実装次第では
+ */
+var queryDirectly = function ( databaseName, queryStr, param ) {
+	var dbs = factoryImpl.db.getInstance();
+	var db = dbs[ databaseName ];
+	if( !db ){
+		return Promise.reject({
+			"isReady" : false
+		});
+	}
+
+	return new Promise(function (resolve,reject) {
+		db.all(queryStr, param, (err, rows) => {
+			if(!err){
+				resolve(rows);
+			}else{
+				reject(err);
+			}
+		});
+	});
+};
+exports.queryDirectly = queryDirectly;
+
+
 
 var setupTable1st = function( databaseName ){
 	var dbs = factoryImpl.db.getInstance();
@@ -174,21 +205,19 @@ var addNewUser = function(databaseName, deviceKey, maxEntrys, passwordStr ){
 		var wrappedDeviceKey = wrapString( deviceKey );
 		var wrappedPassWord = wrapString( passwordStr )
 		var query_str = "INSERT INTO owners_permission([owners_hash], [max_entrys], [password])";
-		query_str += " VALUES('" + wrappedDeviceKey + "', " + maxEntrys + ", '" + wrappedPassWord + "')";
+		query_str += " VALUES( ?, ?, ? )";
 
-		db.all(query_str, [], (err, rows) => {
+		db.run(query_str, [wrappedDeviceKey, maxEntrys, wrappedPassWord], (err) => {
 			if(!err){
 				return resolve();
 			}else{
-				// ToDo.
-				// 重複キーだと、以下のerrが返る。
-				// このまま返す、、、のは将来的に修正したいね。
-				// { [Error: SQLITE_CONSTRAINT: UNIQUE constraint failed: owners_permission.owners_hash] errno: 19, code: 'SQLITE_CONSTRAINT' }
+				// なお、重複キーの時のerr内容は以下。
+				// "Error: SQLITE_CONSTRAINT: UNIQUE constraint failed: owners_permission.owners_hash"
 				reject({
 					"cant_to_insert" : err
 				});
 			}
-		});
+		});		
 	});
 };
 exports.addNewUser = addNewUser;
@@ -247,9 +276,9 @@ var deleteExistUser = function(databaseName, deviceKey ){
 		var wrappedDeviceKey = wrapString( deviceKey );
 		var query_str = "DELETE";
 		query_str += " FROM owners_permission";
-		query_str += " WHERE [owners_hash]='" + wrappedDeviceKey + "'";
+		query_str += " WHERE [owners_hash] = ?";
 
-		db.all(query_str, [], (err) => {
+		db.run(query_str, [ wrappedDeviceKey ], (err) => {
 			if(!err){
 				return resolve();
 			}else{
@@ -287,9 +316,9 @@ var isOwnerValid = function( databaseName, deviceKey, password ){
 		var wrappedPassWord  = wrapString( password ); 
 		var query_str = "SELECT owners_hash, password, max_entrys";
 		query_str += " FROM owners_permission";
-		query_str += " WHERE [owners_hash]='" + wrappedDeviceKey + "'";
+		query_str += " WHERE [owners_hash] = ?";
 
-		db.all(query_str, [], (err, rows) => { // get()でショートハンドしても良いが、Queryの分かりやすさ考慮でall()する。
+		db.all(query_str, [wrappedDeviceKey], (err, rows) => { // get()でショートハンドしても良いが、Queryの分かりやすさ考慮でall()する。
 			if(!err){
 				if( rows.length > 0 ){
 					if(wrappedPassWord == rows[0].password){
@@ -342,9 +371,9 @@ var getNumberOfLogs = function( databaseName, deviceKey ){
 
 	return new Promise(function(resolve,reject){
 		var query_str = "SELECT count(*) FROM activitylogs";
-		query_str += " WHERE [owners_hash]='" + wrappedDeviceKey + "'"; // 固定長文字列でも、後ろの空白は無視してくれるようだ。
+		query_str += " WHERE [owners_hash] = ?"; // 固定長文字列でも、後ろの空白は無視してくれるようだ。
 
-		db.all(query_str, [], (err, rows) => {
+		db.all(query_str, [wrappedDeviceKey], (err, rows) => {
 			var item;
 			if(!err){
 				item = rows[0];
@@ -385,9 +414,9 @@ var addActivityLog2Database = function( databaseName, deviceKey, typeOfAction ){
 		var now_date = new Date();
 		var date_str = now_date.toFormat("YYYY-MM-DD HH24:MI:SS.000"); // data-utilsモジュールでの拡張を利用。
 		var query_str = "INSERT INTO activitylogs(created_at, type, owners_hash ) ";
-		query_str += "VALUES('" + date_str + "', " + typeOfAction + ", '" + wrappedDeviceKey + "')";
+		query_str += "VALUES( ?, ?, ? )";
 
-		db.all(query_str, [], (err, rows) => {
+		db.run(query_str, [date_str, typeOfAction, wrappedDeviceKey], (err) => {
 			if(!err){
 				var insertedData = {
 					"type_value" : typeOfAction,
@@ -417,6 +446,7 @@ exports.addActivityLog2Database = addActivityLog2Database;
 var getListOfActivityLogWhereDeviceKey = function( databaseName, deviceKey, period ){
 	var wrapString = factoryImpl._wrapStringValue.getInstance(); 
 	var wrappedDeviceKey = wrapString( deviceKey );
+	var quaryPlaceHolderArray = [];
 
 	var dbs = factoryImpl.db.getInstance();
 	var db = dbs[ databaseName ];
@@ -427,23 +457,22 @@ var getListOfActivityLogWhereDeviceKey = function( databaseName, deviceKey, peri
 	}
 
 	var query_str = "SELECT created_at, type FROM activitylogs";
-	query_str += " WHERE [owners_hash]='" + wrappedDeviceKey + "'"; // 固定長文字列でも、後ろの空白は無視してくれるようだ。
+	query_str += " WHERE [owners_hash] = ?"; // 固定長文字列でも、後ろの空白は無視してくれるようだ。
+	quaryPlaceHolderArray.push( wrappedDeviceKey );
 	// http://sql55.com/column/string-comparison.php
 	// > SQL Server では文字列を比較する際、比較対象の 2 つの文字列の長さが違った場合、
 	// > 短い方の文字列の後ろにスペースを足して、長さの長い方にあわせてから比較します。
 	if( period && period.start ){
-		query_str += " AND [created_at] > '";
-		query_str += period.start;
-		query_str += "'";
+		query_str += " AND [created_at] > ?";
+		quaryPlaceHolderArray.push( period.start );
 	}
 	if( period && period.end ){
-		query_str += " AND [created_at] <= '";
-		query_str += period.end;
-		query_str += "'";
+		query_str += " AND [created_at] <= ?";
+		quaryPlaceHolderArray.push( period.end );
 	}
 
 	return new Promise(function(resolve,reject){
-		db.all(query_str, [], (err, rows) => {
+		db.all(query_str, quaryPlaceHolderArray, (err, rows) => {
 			if(!err){
 				return resolve( rows );
 			}else{
@@ -468,6 +497,7 @@ exports.getListOfActivityLogWhereDeviceKey = getListOfActivityLogWhereDeviceKey;
 var deleteActivityLogWhereDeviceKey = function( databaseName, deviceKey, period ){
 	var wrapString = factoryImpl._wrapStringValue.getInstance(); 
 	var wrappedDeviceKey = wrapString( deviceKey );
+	var quaryPlaceHolderArray = [];
 
 	var dbs = factoryImpl.db.getInstance();
 	var db = dbs[ databaseName ];
@@ -476,25 +506,22 @@ var deleteActivityLogWhereDeviceKey = function( databaseName, deviceKey, period 
 			"isReady" : false
 		});
 	}
-
 	var query_str = "DELETE FROM activitylogs";
-	query_str += " WHERE [owners_hash]='" + wrappedDeviceKey + "'"; // 固定長文字列でも、後ろの空白は無視してくれるようだ。
+	query_str += " WHERE [owners_hash] = ?"; // 固定長文字列でも、後ろの空白は無視してくれるようだ。
+	quaryPlaceHolderArray.push( wrappedDeviceKey );
 	// http://sql55.com/column/string-comparison.php
 	// > SQL Server では文字列を比較する際、比較対象の 2 つの文字列の長さが違った場合、
 	// > 短い方の文字列の後ろにスペースを足して、長さの長い方にあわせてから比較します。
 	if( period && period.start ){
-		query_str += " AND [created_at] > '";
-		query_str += period.start;
-		query_str += "'";
+		query_str += " AND [created_at] > ?";
+		quaryPlaceHolderArray.push( period.start );
 	}
 	if( period && period.end ){
-		query_str += " AND [created_at] <= '";
-		query_str += period.end;
-		query_str += "'";
+		query_str += " AND [created_at] <= ?";
+		quaryPlaceHolderArray.push( period.end );
 	}
-
 	return new Promise(function(resolve,reject){
-		db.all(query_str, [], (err, rows) => {
+		db.all(query_str, quaryPlaceHolderArray, (err, rows) => {
 			if(!err){
 				return resolve( rows );
 			}else{

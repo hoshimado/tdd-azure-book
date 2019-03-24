@@ -6,3 +6,18 @@
  * 5.2節　Azure上に公開して、設定と動作確認を行う
 
 
+## 補足
+
+`src\api\sql_db_io` と `test\sql_db_io` フォルダ要配下のファイル名を、
+ファイル管理の都合上から[chapter03/section3-3](../../chapter03/section3-3)の時とは変更しています。
+`sql_lite_db.js` から `sql_lite_db_crud.js` へ。
+
+・・・ファイルの中身も微妙に異なるのな何故？？？？
+
+◆修正中◆
+
+* 現在時刻についてのテストコード（紙面上で解説）
+  * sql_lite_db_test2.js
+* 先の節も含めて、その他のテストも記述したテストコード例（As Is）
+  * sql_lite_db_test.full.js
+
